@@ -12,33 +12,31 @@ def list_tasks(status: str | None = None, q: str | None = None) -> list[dict[str
     filtered: list[dict[str, Any]] = []
 
     for task in tasks:
-        # Instructor note: intentional bug for the lab.
-        # This uses the literal string "status" instead of the query parameter value.
-        if status and task["status"] != "status":
+        if status and task["status"] != status:
             continue
-
-        # Instructor note: partial feature for the lab.
-        # The route already accepts `q`, but search is not implemented yet.
+        if q and q.lower() not in task["title"].lower() and q.lower() not in task["description"].lower():
+            continue
         filtered.append(task)
 
     return filtered
 
 
 def get_task(task_id: int) -> dict[str, Any] | None:
-    """Find a single task by ID."""
     tasks = load_tasks()
-    return next((task for task in tasks if task["id"] == task_id), None)
+    for task in tasks:
+        if task["id"] == task_id:
+            return task
+    return None
 
 
-def create_task(payload: dict[str, Any]) -> dict[str, Any]:
-    """Create a new task and persist it."""
+def create_task(title: str, description: str, priority: str) -> dict[str, Any]:
     tasks = load_tasks()
     task = {
         "id": next_task_id(tasks),
-        "title": payload["title"],
-        "description": payload["description"],
+        "title": title,
+        "description": description,
         "status": "open",
-        "priority": payload["priority"],
+        "priority": priority,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
     }
@@ -48,17 +46,11 @@ def create_task(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def complete_task(task_id: int) -> dict[str, Any] | None:
-    """Mark a task as completed."""
     tasks = load_tasks()
-
     for task in tasks:
         if task["id"] == task_id:
-            updated_task = dict(task)
-            updated_task["status"] = "done"
-            updated_task["completed_at"] = datetime.now(timezone.utc).isoformat()
-
-            # Instructor note: intentional bug for the lab.
-            # The updated task is returned, but the stored list is never updated or saved.
-            return updated_task
-
+            task["status"] = "done"
+            task["completed_at"] = datetime.now(timezone.utc).isoformat()
+            save_tasks(tasks)
+            return task
     return None
